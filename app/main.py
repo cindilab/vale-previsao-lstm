@@ -12,7 +12,8 @@ import tensorflow as tf
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.dados import baixar_direto, baixar_mercado, limpar, preparar_features, verificar_drift
+from app.dados import (baixar_direto, baixar_mercado, limpar, preparar_features,
+                       remover_pregao_em_andamento, verificar_drift)
 from app.monitoramento import Metricas, desempenho_em_producao, logger, salvar_previsao
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -65,7 +66,7 @@ def dados_recentes():
             return _cache["dados"], _cache["mercado"]
         inicio = (datetime.now() - timedelta(days=DIAS_HISTORICO)).strftime("%Y-%m-%d")
         try:
-            df = limpar(baixar_direto(TICKER, inicio))
+            df = remover_pregao_em_andamento(limpar(baixar_direto(TICKER, inicio)))
             mercado = baixar_mercado(MERCADO, inicio, df.index) if MERCADO else None
         except Exception as erro:
             logger.error("falha ao baixar dados do Yahoo: %s", erro)
@@ -89,15 +90,29 @@ def prever(df, mercado=None):
     return variacao, drift, alerta
 
 
-class Fechamentos(BaseModel):
-    fechamentos: list[float] = Field(
+MIN_PREGOES = INFO.get("dias_brutos_necessarios", JANELA + 21)
+
+
+class Pregao(BaseModel):
+    fechamento: float = Field(..., gt=0)
+    maxima: float = Field(..., gt=0)
+    minima: float = Field(..., gt=0)
+    volume: float = Field(..., gt=0)
+
+
+class Pregoes(BaseModel):
+    pregoes: list[Pregao] = Field(
         ...,
-        description=f"Fechamentos diários em ordem cronológica (mínimo {JANELA + 1}).",
-        examples=[[60 + i * 0.05 for i in range(JANELA + 1)]],
+        description=f"Pregões diários em ordem cronológica, do mais antigo ao mais recente (mínimo {MIN_PREGOES}).",
+        examples=[[
+            {"fechamento": round(60 + i * 0.05, 2), "maxima": round(60.6 + i * 0.05, 2),
+             "minima": round(59.4 + i * 0.05, 2), "volume": 25_000_000 + (i % 7) * 1_000_000}
+            for i in range(MIN_PREGOES)
+        ]],
     )
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def raiz():
     return {"status": "ok", "ticker": TICKER, "docs": "/docs",
             "rotas": ["/previsao", "/prever", "/modelo", "/monitoramento"]}
@@ -139,32 +154,31 @@ def previsao():
 
 
 @app.post("/prever")
-def prever_com_dados(corpo: Fechamentos):
-    """Recebe uma lista de fechamentos e prevê o próximo."""
-    if FEATURES != ["retorno"]:
-        raise HTTPException(status_code=400, detail="Este modelo usa outras features além do fechamento. Use GET /previsao.")
-    precos = np.array(corpo.fechamentos, dtype=float)
-    if len(precos) < JANELA + 1:
-        raise HTTPException(status_code=422, detail=f"Envie pelo menos {JANELA + 1} fechamentos.")
-    if np.any(precos <= 0):
-        raise HTTPException(status_code=422, detail="Os fechamentos precisam ser positivos.")
+def prever_com_dados(corpo: Pregoes):
+    """Recebe os últimos pregões (fechamento, máxima, mínima e volume) e prevê o próximo fechamento."""
+    if MERCADO:
+        raise HTTPException(status_code=400, detail="Este modelo usa dados de mercado. Use GET /previsao.")
+    if len(corpo.pregoes) < MIN_PREGOES:
+        raise HTTPException(status_code=422, detail=f"Envie pelo menos {MIN_PREGOES} pregões.")
+    if any(p.minima > p.maxima for p in corpo.pregoes):
+        raise HTTPException(status_code=422, detail="A mínima não pode ser maior que a máxima.")
 
-    df = pd.DataFrame({"Close": precos, "CloseBruto": precos})
-    variacao, drift, alerta = prever_somente_retorno(df)
-    previsto = precos[-1] * (1 + variacao)
+    df = pd.DataFrame({
+        "Close": [p.fechamento for p in corpo.pregoes],
+        "CloseBruto": [p.fechamento for p in corpo.pregoes],
+        "High": [p.maxima for p in corpo.pregoes],
+        "Low": [p.minima for p in corpo.pregoes],
+        "Volume": [p.volume for p in corpo.pregoes],
+    })
+    variacao, drift, alerta = prever(df)
+    ultimo = float(df["CloseBruto"].iloc[-1])
     return {
-        "ultimo_fechamento": round(float(precos[-1]), 2),
+        "ultimo_fechamento": round(ultimo, 2),
         "variacao_prevista_pct": round(variacao * 100, 3),
-        "fechamento_previsto": round(float(previsto), 2),
+        "fechamento_previsto": round(ultimo * (1 + variacao), 2),
         "alerta_drift": alerta,
         "drift": drift,
     }
-
-
-def prever_somente_retorno(df):
-    # só precisa da coluna Close; as outras features não são usadas por este modelo
-    df = df.assign(High=df["Close"], Low=df["Close"], Volume=1.0)
-    return prever(df)
 
 
 @app.get("/monitoramento")
