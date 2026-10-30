@@ -1,0 +1,100 @@
+{
+  "ticker": "VALE3.SA",
+  "janela_dias": 60,
+  "features": [
+    "retorno",
+    "amplitude",
+    "volume_rel",
+    "volatilidade_20",
+    "dist_media_20"
+  ],
+  "opcao_escolhida": "5 features (v3)",
+  "mercado": {},
+  "alvo": "variacao_do_dia_seguinte",
+  "dias_brutos_necessarios": 81,
+  "dados_inicio": "2008-01-02",
+  "dados_fim": "2026-10-29",
+  "treinado_em": "2026-10-29T21:28:55",
+  "metricas_teste": {
+    "periodo": "2023-02-10 a 2026-10-28",
+    "lstm": {
+      "MAE": 0.702,
+      "RMSE": 0.9728,
+      "MAPE_%": 1.1944
+    },
+    "baseline": {
+      "MAE": 0.6959,
+      "RMSE": 0.9657,
+      "MAPE_%": 1.1858
+    },
+    "acerto_direcao_pct": 52.34
+  },
+  "walk_forward": {
+    "so_variacao_v2": {
+      "MAE médio LSTM": 0.7709,
+      "MAE médio baseline": 0.7698,
+      "RMSE médio LSTM": 1.0304,
+      "RMSE médio baseline": 1.0279,
+      "acerto de direção médio %": 48.51,
+      "períodos vencidos (de 5)": 2
+    },
+    "cinco_features_v3": {
+      "MAE médio LSTM": 0.7678,
+      "MAE médio baseline": 0.7698,
+      "RMSE médio LSTM": 1.0296,
+      "RMSE médio baseline": 1.0279,
+      "acerto de direção médio %": 51.24,
+      "períodos vencidos (de 5)": 3
+    },
+    "tecnicas_mais_mercado_v4": {
+      "MAE médio LSTM": 0.7769,
+      "MAE médio baseline": 0.7698,
+      "RMSE médio LSTM": 1.0394,
+      "RMSE médio baseline": 1.0279,
+      "acerto de direção médio %": 49.4,
+      "períodos vencidos (de 5)": 1
+    }
+  },
+  "drift": {
+    "limite_desvios": 1.0,
+    "referencia_treino": {
+      "retorno": {
+        "media": 0.000716802903221547,
+        "desvio": 0.027698304239030712
+      },
+      "amplitude": {
+        "media": 0.031558399579454936,
+        "desvio": 0.019110219673657475
+      },
+      "volume_rel": {
+        "media": -0.10491117378687329,
+        "desvio": 0.6703245396594021
+      },
+      "volatilidade_20": {
+        "media": 0.025064284407896938,
+        "desvio": 0.012339330847608954
+      },
+      "dist_media_20": {
+        "media": 0.004207013501502951,
+        "desvio": 0.06306806685529574
+      }
+    }
+  },
+  "historico_versoes": {
+    "v1_prever_preco": {
+      "MAE": 1.2932,
+      "RMSE": 1.7585,
+      "MAPE_%": 2.0457
+    },
+    "v2_prever_variacao": {
+      "MAE": 0.7233,
+      "RMSE": 1.0321,
+      "MAPE_%": 1.1724
+    },
+    "v3_walk_forward_desde_2015": {
+      "so_variacao": 0.7731,
+      "cinco_features": 0.784,
+      "baseline": 0.7684
+    }
+  }
+}
