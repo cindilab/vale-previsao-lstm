@@ -1,4 +1,6 @@
 import time
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -38,6 +40,15 @@ def limpar(df):
     df = df.dropna()
     df = df[~df.index.duplicated(keep="last")]
     return df[df["Volume"] > 0]
+
+
+def remover_pregao_em_andamento(df, hora_fechamento=18, minuto_fechamento=30):
+    # durante o pregão o Yahoo devolve o preço do momento como se fosse o fechamento do dia
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
+    fechou = (agora.hour, agora.minute) >= (hora_fechamento, minuto_fechamento)
+    if len(df) and df.index[-1].date() == agora.date() and not fechou:
+        return df.iloc[:-1]
+    return df
 
 
 def baixar_mercado(tickers, inicio, datas_referencia):

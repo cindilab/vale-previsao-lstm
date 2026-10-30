@@ -5,7 +5,8 @@ pandas==2.3.3
 scikit-learn==1.6.1
 joblib==1.6.0
 requests==2.34.2
-
+tzdata==2025.2
+ 
 # API
 fastapi==0.115.6
 uvicorn==0.34.0
