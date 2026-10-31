@@ -4,7 +4,7 @@ Projeto da Fase 5 da pós em Machine Learning Engineering (FIAP).
 
 Modelo LSTM que prevê o fechamento do próximo pregão da Vale (VALE3.SA), servido por uma API FastAPI em Docker, com monitoramento de uso, de data drift e do erro real em produção.
 
-- **API:** `https://vale-previsao-lstm.onrender.com` (documentação interativa em `/docs`)
+- **API:** `https://vale-previsao-lstm.onrender.com` (documentação interativa em https://vale-previsao-lstm.onrender.com/docs)
 - **Vídeo:** https://youtu.be/hd-Tm1fZH-g
 
 ## Estrutura
